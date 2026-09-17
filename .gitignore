@@ -14,3 +14,7 @@ teg.vmod
 teg_rules.pdf
 vassal/
 package/
+
+# local secrets (Cloudflare token for deploys)
+.env
+.env.local
