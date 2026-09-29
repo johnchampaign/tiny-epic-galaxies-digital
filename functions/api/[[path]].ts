@@ -5,10 +5,11 @@ import { jsonCodec } from 'digital-boardgame-framework';
 import { tegAdapter, createInitialState } from '../../src/engine/index.js';
 import type { Action, GameState } from '../../src/engine/index.js';
 import { tegAiControllers } from '../../src/engine/aiControllers.js';
-import { KvStore } from './_kvstore.js';
+import { TegStore } from './_store.js';
 
 interface Env {
-  GAMES: any;
+  GAMES: any;     // KV: bug reports (see _store.ts)
+  GAMES_DB: any;  // D1: games, snapshots, chat
   /** Shared secret matching the hub's RATINGS_INGEST_KEY. When set, finished
    *  games auto-report to the hub's /ratings/record (ranked play). */
   RATINGS_INGEST_KEY?: string;
@@ -39,7 +40,7 @@ export const onRequest = async (context: { request: Request; env: Env; params: {
     snapshotHistory: 20,   // cap per-game snapshot history (framework >=0.32)
     adapter: tegAdapter,
     codec: jsonCodec<GameState>(),
-    store: new KvStore(env.GAMES),
+    store: new TegStore(env.GAMES_DB, env.GAMES),
     // Server-driven, rated AI opponents (keyed by difficulty). A seat marked AI
     // in createGame is driven here, so the human can't tamper with its play.
     aiControllers: tegAiControllers,
@@ -63,7 +64,7 @@ export const onRequest = async (context: { request: Request; env: Env; params: {
     if (request.method === 'POST' && parts.length === 1 && parts[0] === 'report') {
       const b: any = await request.json().catch(() => ({}));
       const reportId = (globalThis.crypto?.randomUUID?.() ?? `r${Date.now()}`);
-      const store = new KvStore(env.GAMES);
+      const store = new TegStore(env.GAMES_DB, env.GAMES);
       await store.putReport({
         reportId,
         gameId: b.gameId ?? 'standalone',
@@ -86,7 +87,7 @@ export const onRequest = async (context: { request: Request; env: Env; params: {
 
     // ---- Report triage (public-read, fingerprint stripped; public-write resolve) ----
     if (parts[0] === 'reports') {
-      const store = new KvStore(env.GAMES);
+      const store = new TegStore(env.GAMES_DB, env.GAMES);
       const strip = (r: any) => { if (!r) return r; const { userAgent, ...rest } = r; return rest; };
       // GET /api/reports — list (newest first), without state/log for brevity.
       if (request.method === 'GET' && !parts[1]) {

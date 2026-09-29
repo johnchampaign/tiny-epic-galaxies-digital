@@ -7,3 +7,10 @@ compatibility_flags = ["nodejs_compat"]
 [[kv_namespaces]]
 binding = "GAMES"
 id = "ac0c631e065f489ba2c563794191e95f"
+
+# D1: games, snapshots and chat (KV above keeps bug reports — see functions/api/_store.ts).
+# Schema: node_modules/digital-boardgame-framework/d1/schema.sql
+[[d1_databases]]
+binding = "GAMES_DB"
+database_name = "tiny-epic-galaxies"
+database_id = "48ee31b9-68b3-4979-b084-8b75bf456229"
