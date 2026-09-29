@@ -1,4 +1,4 @@
-import { recordPlay } from 'digital-boardgame-framework';
+import { recordFinish, recordPlay } from 'digital-boardgame-framework';
 import {
   createInitialState,
   tegAdapter,
@@ -27,6 +27,9 @@ export class LocalEngine {
   // Snapshots of prior states for undo. Only deterministic, no-new-info actions
   // by the current human are undoable; revealing new info clears the stack.
   private undoStack: GameState[] = [];
+  // Play-counter mode chosen at start; the finish beacon reuses it.
+  private playMode: 'ai' | 'hotseat';
+  private finishRecorded = false;
 
   constructor(seats: LocalSeat[], seed: number, aiThinkMs = 650, rogueDifficulty: 'beginner' | 'advanced' = 'beginner', rogueCard?: import('../engine/index.js').RogueCardId) {
     this.seats = seats;
@@ -35,6 +38,7 @@ export class LocalEngine {
     // Best-effort play counter: a local game just started. 'ai' if any seat is
     // AI/Rogue (vs-AI or solo), else 'hotseat'. Never throws or blocks.
     const mode = seats.some((s) => s.control === 'ai' || s.isRogue) ? 'ai' : 'hotseat';
+    this.playMode = mode;
     void recordPlay('tiny-epic-galaxies', mode);
     this.scheduleAi();
   }
@@ -58,7 +62,29 @@ export class LocalEngine {
   }
 
   private emit(): void {
+    this.maybeRecordFinish();
     for (const l of this.listeners) l();
+  }
+
+  /**
+   * Best-effort "game finished" beacon: fires once, on the first state change
+   * that lands in gameOver (never on re-render, and not again if undo/redo
+   * re-enters gameOver). Same mode as the start beacon; `outcome` (the human's
+   * result) only for vs-AI / solo games.
+   */
+  private maybeRecordFinish(): void {
+    if (this.finishRecorded || this.state.phase !== 'gameOver') return;
+    this.finishRecorded = true;
+    if (this.playMode === 'ai') {
+      const winners = this.state.winners ?? [];
+      const humans = this.state.order.filter((_, i) => this.seats[i]?.control === 'human');
+      const humanWon = winners.some((id) => humans.includes(id));
+      const aiWon = winners.some((id) => !humans.includes(id));
+      const outcome = humanWon ? (aiWon ? 'draw' : 'win') : 'loss';
+      void recordFinish('tiny-epic-galaxies', this.playMode, { outcome });
+    } else {
+      void recordFinish('tiny-epic-galaxies', this.playMode);
+    }
   }
 
   seatControl(playerId: string): 'human' | 'ai' {
