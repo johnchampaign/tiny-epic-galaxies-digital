@@ -19,6 +19,10 @@ const server = new GameServer<GameState, Action, string>({
   codec: jsonCodec<GameState>(),
   store,
   aiControllers: tegAiControllers,
+  // Split long AI runs: follow offers hand the decision to other seats after
+  // almost every die, so AI seats interleave (perSeat would split per action);
+  // cap by work instead - ~10 actions is ~15-100 ms of AI CPU (2-5 seats).
+  aiSlice: { maxSteps: 10 },
   gameUrl: (gameId, token) => `${PUBLIC_URL}/?game=${gameId}&token=${token}`,
   // Best-effort play counter: createGame fires an 'online' beacon to the hub.
   playBeacon: { appId: 'tiny-epic-galaxies' },

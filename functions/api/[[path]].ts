@@ -44,6 +44,10 @@ export const onRequest = async (context: { request: Request; env: Env; params: {
     // Server-driven, rated AI opponents (keyed by difficulty). A seat marked AI
     // in createGame is driven here, so the human can't tamper with its play.
     aiControllers: tegAiControllers,
+    // Split long AI runs: follow offers hand the decision to other seats after
+    // almost every die, so AI seats interleave (perSeat would split per action);
+    // cap by work instead - ~10 actions is ~15-100 ms of AI CPU (2-5 seats).
+    aiSlice: { maxSteps: 10 },
     gameUrl: (gameId, tok) => `${url.origin}/?game=${gameId}&token=${tok}`,
     // Best-effort play counter: createGame fires an 'online' beacon to the hub.
     playBeacon: { appId: 'tiny-epic-galaxies' },
